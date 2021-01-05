@@ -1,0 +1,6 @@
+#pragma once
+
+#define ASIO_STANDALONE 1
+//#define ASIO_SEPARATE_COMPILATION 1
+//#define ASIO_HAS_STD_COROUTINE 1
+//#define ASIO_HAS_CO_AWAIT 1
