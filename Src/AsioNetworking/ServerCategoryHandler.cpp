@@ -14,7 +14,7 @@ struct PeerListData {
 	uint8_t PeerCount;
 };
 
-void Networking::ServerCategoryHandler::ProcessMessage(PeerConnection& peer, Message& message)
+void Networking::ServerCategoryHandler::ProcessMessage(PeerConnection* peer, Message& message)
 {
 	switch (message.Header.Type) {
 	case Messages::WelcomeMessage:
@@ -26,7 +26,7 @@ void Networking::ServerCategoryHandler::ProcessMessage(PeerConnection& peer, Mes
 	case Messages::ServerPort:
 		ReceiveServerPort(peer, message);
 	case Messages::RequestPeerList:
-		ReceiveRequestPeerList(peer, message);
+		SendPeerList(peer);
 		break;
 	case Messages::PeerList:
 		ReceivePeerList(message);
@@ -37,18 +37,17 @@ void Networking::ServerCategoryHandler::ProcessMessage(PeerConnection& peer, Mes
 	}
 }
 
-void Networking::ServerCategoryHandler::ReceiveWelcomeMessage(PeerConnection& peer, Message& message)
+void Networking::ServerCategoryHandler::ReceiveWelcomeMessage(PeerConnection* peer, Message& message)
 {
 	WelcomeMessageData& messageData = message.GetData<WelcomeMessageData>();
 	std::string messageString;
 	messageString.resize(messageData.WelcomeStringSize);
 	message.Pull(messageString.data(), messageData.WelcomeStringSize);
 
-	std::cout << messageString << "[" << peer.Address() << "]" << std::endl;
-	SendRequestPeerList(peer);
+	std::cout << messageString << "[" << peer->Address() << "]" << std::endl;
 }
 
-void Networking::ServerCategoryHandler::SendWelcomeMessage(PeerConnection& peer)
+void Networking::ServerCategoryHandler::SendWelcomeMessage(PeerConnection* peer)
 {
 	std::string welcomeMessageString = "Welcome hello from your new buddy";
 	WelcomeMessageData messageData;
@@ -61,13 +60,13 @@ void Networking::ServerCategoryHandler::SendWelcomeMessage(PeerConnection& peer)
 	SendMessageToPeer(peer, message);
 }
 
-void Networking::ServerCategoryHandler::SendRequestServerPort(PeerConnection& peer)
+void Networking::ServerCategoryHandler::SendRequestServerPort(PeerConnection* peer)
 {
 	Message message = Message::CreateMessage(Messages::RequestServerPort);
 	SendMessageToPeer(peer, message);
 }
 
-void Networking::ServerCategoryHandler::SendServerPort(PeerConnection& peer)
+void Networking::ServerCategoryHandler::SendServerPort(PeerConnection* peer)
 {
 	Message message = Message::CreateMessage(Messages::ServerPort);
 	short port = server->Port();
@@ -76,45 +75,51 @@ void Networking::ServerCategoryHandler::SendServerPort(PeerConnection& peer)
 	SendMessageToPeer(peer, message);
 }
 
-void Networking::ServerCategoryHandler::ReceiveServerPort(PeerConnection& peer, Message& message)
+void Networking::ServerCategoryHandler::ReceiveServerPort(PeerConnection* peer, Message& message)
 {
 	short port;
 	message.Pull(port);
-	peer.SetOriginalPort(port);
+	peer->SetOriginalPort(port);
 }
 
-void Networking::ServerCategoryHandler::SendRequestPeerList(PeerConnection& peer)
+void Networking::ServerCategoryHandler::SendRequestPeerList(PeerConnection* peer)
 {
 	Message message = Message::CreateMessage(Messages::RequestPeerList);
 
 	SendMessageToPeer(peer, message);
 }
 
-void Networking::ServerCategoryHandler::ReceiveRequestPeerList(PeerConnection& peer, Message& message)
+void Networking::ServerCategoryHandler::SendPeerList(PeerConnection* peer)
 {
+	std::cout << "Sending peer list to " << peer->Address() << ":" << std::endl;
 	Message returnMessage = Message::CreateMessage(Messages::PeerList);
 
 	PeerListData peerListData;
 	peerListData.PeerCount = server->ConnectedPeerCount() - 1; // minus to exclude calling peer
 
+	if (peerListData.PeerCount < 0)
+		peerListData.PeerCount = 0;
+
 	returnMessage.Push(peerListData);
 
 	// determin length of address strings, and store in array
-	uint16_t peerAddressCharCount[peerListData.PeerCount];
-	for (uint16_t i = 0; i < peerListData.PeerCount; i++)
+	std::unique_ptr<uint16_t[]> peerAddressCharCount = std::make_unique<uint16_t[]>(peerListData.PeerCount);
+	int bufferIndex = 0;
+	for (uint16_t i = 0; i < server->ConnectedPeerCount(); i++)
 	{
-		const PeerConnection& serverPeer = server->GetPeer(i);
-		if (&peer == &serverPeer)
+		const PeerConnection* serverPeer = server->GetPeer(i);
+		if (peer == serverPeer)
 			continue; // excluding calling peer
 
-		std::string address = serverPeer.Address();
-		peerAddressCharCount[i] = address.size();
+		std::string address = serverPeer->Address();
+		peerAddressCharCount[bufferIndex] = address.size();
 		// push actual address
-		returnMessage.Push(address.data(), peerAddressCharCount[i]);
+		returnMessage.Push(address.data(), peerAddressCharCount.get()[bufferIndex]);
+		bufferIndex++;
 	}
 
 	// push information
-	returnMessage.Push(peerAddressCharCount, sizeof(uint16_t[peerListData.PeerCount]));
+	returnMessage.Push(peerAddressCharCount.get(), sizeof(uint16_t) * peerListData.PeerCount);
 
 	SendMessageToPeer(peer, returnMessage);
 }
@@ -123,39 +128,51 @@ void Networking::ServerCategoryHandler::ReceivePeerList(Message& message)
 {
 	PeerListData messageData = message.GetData<PeerListData>();
 
-	uint16_t peerAddressLengths[messageData.PeerCount];
-	message.Pull(peerAddressLengths, sizeof(uint16_t[messageData.PeerCount]));
+	std::unique_ptr<uint16_t[]> peerAddressLengths = std::make_unique<uint16_t[]>(messageData.PeerCount);
+	message.Pull(peerAddressLengths.get(), sizeof(uint16_t) * messageData.PeerCount);
 
-	std::vector<std::string> peerAddresses;
 	std::unordered_set<std::string> peerAddressesSet;
 
 	for (int i = messageData.PeerCount - 1; i >= 0; i--)
 	{
+		uint16_t stringSize = peerAddressLengths.get()[i];
 		std::string address;
-		address.resize(peerAddressLengths[i]);
-		message.Pull(address.data(), peerAddressLengths[i]);
-		peerAddresses.emplace_back(address);
+		address.resize(stringSize);
+		message.Pull(address.data(), stringSize);
 		peerAddressesSet.emplace(address);
 
-		std::cout << "Received peer address: " << address << std::endl;
+		//std::cout << "Received peer address(" << stringSize << "): " << address << std::endl;
 	}
 
-	std::cout << "Received peer list with " << std::to_string(messageData.PeerCount) << " peers" << std::endl;
-
-	for (int i = 0; i < peerAddresses.size(); i++)
+	// remove all addresses we can't connect to because of duplicate
+	for (int i = 0; i < server->ConnectedPeerCount(); i++)
 	{
-		const PeerConnection& peer = server->GetPeer(i);
-		std::string address = peer.Address();
-		auto it = peerAddressesSet.find(address);
-		if (it == peerAddressesSet.end()) {
-			// Found a new peer that has not been identified before
-			// use address and our own configured port to try and connect
-			std::cout << "Connecting to peer at " << address << ":" << server->Port() << std::endl;
+		const PeerConnection* peer = server->GetPeer(i);
+		std::string address = peer->Address();
 
-			address = peerAddresses[i];
-			std::string ipAddress = address.substr(0, address.find_first_of(':'));
-			std::string port = address.substr(address.find_first_of(':') + 1, address.size());
-			server->Connect(address, std::stoi(port));
+		// check if it's still connected
+		bool disconnected = !peer->IsConnected();
+		if (disconnected) {
+			disconnected = true;
+			server->Disconnect(peer); // remove peers that are disconnected
 		}
+
+		auto it = peerAddressesSet.find(address);
+		if (it != peerAddressesSet.end()) {
+			peerAddressesSet.erase(*it);
+		}
+	}
+
+	if (peerAddressesSet.size() > 0)
+		std::cout << "Received peer list with " << std::to_string(messageData.PeerCount) << " peers" << std::endl;
+
+	for (auto& address : peerAddressesSet)
+	{
+		// Found a new peer that has not been identified before or has disconnected and we try to reconnect
+		// use address and our own configured port to try and connect
+
+		std::string ipAddress = address.substr(0, address.find_first_of(':'));
+		std::string port = address.substr(address.find_first_of(':') + 1, address.size());
+		server->Connect(ipAddress, std::stoi(port));
 	}
 }

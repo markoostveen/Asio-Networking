@@ -37,6 +37,10 @@ namespace Networking {
 			_originalPort = port;
 		}
 
+		bool IsConnected() const {
+			return _socket.is_open();
+		}
+
 	private:
 		void ReadHeader();
 		void ReadBody();
@@ -50,7 +54,7 @@ namespace Networking {
 		short _originalPort;
 
 		std::unordered_map<uint8_t, std::shared_ptr<CategorizedConnectionHandler>> _connectionTypeQueues;
-		std::queue<Message> _outgoingMessages;
+		std::queue<Message> _outgoingMessages{};
 
 		//buffers
 		Message _readBuffer{};

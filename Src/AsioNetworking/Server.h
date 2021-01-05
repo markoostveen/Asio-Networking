@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <string>
+#include <iostream>
 
 namespace Networking {
 	class Server {
@@ -22,24 +23,38 @@ namespace Networking {
 			return _peers.size();
 		}
 
-		const PeerConnection& GetPeer(uint32_t index) {
-			return _peers[index];
+		const PeerConnection* GetPeer(uint32_t index) {
+			return _peers[index].get();
 		}
 
 		short Port() {
 			return _acceptor.local_endpoint().port();
 		}
 
-	protected:
-		Server(asio::io_context& io_context, short port) : _io_context(io_context), _acceptor(_io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port), port) {}
+		void Disconnect(const PeerConnection* peer) {
+			for (int i = 0; i < _peers.size(); i++)
+			{
+				if (_peers[i].get() == peer) {
+					_peers.erase(_peers.begin() + i);
+					break;
+				}
+			}
+		}
 
-		virtual bool OnPeerConnected(PeerConnection& newPeer) = 0;
+	protected:
+		Server(asio::io_context& io_context, short port)
+			: _io_context(io_context), _acceptor(_io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port), port)
+		{
+			std::cout << "Server running on " << _acceptor.local_endpoint().address() << ":" << port << std::endl;
+		}
+
+		virtual bool OnPeerConnected(PeerConnection* newPeer) = 0;
 
 	private:
 
-		PeerConnection& AddPeer(asio::ip::tcp::socket socket);
+		PeerConnection* AddPeer(asio::ip::tcp::socket socket);
 		asio::io_context& _io_context;
 		asio::ip::tcp::acceptor _acceptor;
-		std::vector<PeerConnection> _peers;
+		std::vector<std::unique_ptr<PeerConnection>> _peers;
 	};
 }

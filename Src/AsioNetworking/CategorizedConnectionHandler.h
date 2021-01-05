@@ -13,7 +13,7 @@ namespace Networking {
 	class CategorizedConnectionHandler {
 	public:
 
-		virtual void ProcessMessage(PeerConnection& peer, Message& message) = 0;
+		virtual void ProcessMessage(PeerConnection* peer, Message& message) = 0;
 
 		uint8_t CategoryId;
 
@@ -21,10 +21,7 @@ namespace Networking {
 		CategorizedConnectionHandler(uint8_t categoryId, Server* parentServer)
 			: CategoryId(categoryId), server(parentServer) {}
 
-		void SendMessageToPeer(PeerConnection& peer, Message& message) {
-			message.Header.SetCategory(CategoryId);
-			peer.SendMessageToPeer(message);
-		}
+		void SendMessageToPeer(PeerConnection* peer, Message& message);
 
 		Server* server;
 	};

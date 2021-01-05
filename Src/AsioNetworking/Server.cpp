@@ -11,21 +11,27 @@ namespace Networking {
 		_acceptor.async_accept([this](std::error_code errorCode, asio::ip::tcp::socket socket) {
 			if (!errorCode)
 			{
-				std::cout << "New Connection: " << socket.remote_endpoint() << "\n";
+				std::string address = socket.remote_endpoint().address().to_string();
 
 				// Create a new connection to handle this client
-				PeerConnection& peer = AddPeer(std::move(socket));
+				PeerConnection* peer = AddPeer(std::move(socket));
 
 				if (OnPeerConnected(peer)) {
+					std::cout << "Connection approved: " << address << std::endl;
+
 					std::shared_ptr<ServerCategoryHandler> serverHandler = std::make_shared<ServerCategoryHandler>(this);
-					peer.AddCategoryCallback(ServerCategory, serverHandler);
-					serverHandler->SendWelcomeMessage(peer);
-					serverHandler->SendRequestServerPort(peer);
+					peer->AddCategoryCallback(ServerCategory, serverHandler);
+					serverHandler->SendWelcomeMessage(peer); // give client opertunity to send important message
+					serverHandler->SendRequestServerPort(peer); // ask for the identifier of their server
+					serverHandler->SendRequestPeerList(peer); // ask for their peer list so we can also make connections
+				}
+				else {
+					Disconnect(peer);
 				}
 			}
 			else
 			{
-				std::cout << "New connection error: " << errorCode.message() << "\n";
+				std::cout << "Connection attempt: " << errorCode.message() << "\n";
 			}
 
 			WaitForIncomingConnection();
@@ -36,35 +42,43 @@ namespace Networking {
 	{
 		try
 		{
+			std::cout << "Connecting to peer at " << host << ":" << port << std::endl;
 			asio::ip::tcp::resolver resolver(_io_context);
 			asio::ip::tcp::resolver::results_type endpoints = resolver.resolve(host, std::to_string(port));
 
 			auto socket = std::make_shared< asio::ip::tcp::socket>(_io_context);
 
 			asio::async_connect(*socket, endpoints,
-				[this, port, socket](std::error_code ec, asio::ip::tcp::endpoint endpoint)
+				[this, port, socket](std::error_code errorCode, asio::ip::tcp::endpoint endpoint)
 				{
-					if (!ec)
+					if (!errorCode)
 					{
-						PeerConnection& peer = AddPeer(std::move(*socket));
-						peer.SetOriginalPort(port);
+						PeerConnection* peer = AddPeer(std::move(*socket));
+						peer->SetOriginalPort(port);
 						if (OnPeerConnected(peer)) {
+							std::cout << "Connected to " << endpoint << std::endl;
+
 							std::shared_ptr<ServerCategoryHandler> serverHandler = std::make_shared<ServerCategoryHandler>(this);
-							peer.AddCategoryCallback(ServerCategory, serverHandler);
+							peer->AddCategoryCallback(ServerCategory, serverHandler);
+						}
+						else {
+							Disconnect(peer);
 						}
 					}
 				});
 		}
-		catch (std::exception& e)
+		catch (std::exception& exception)
 		{
-			std::cerr << "Client Exception: " << e.what() << "\n";
+			std::cerr << "Client Exception: " << exception.what() << std::endl;
 			return false;
 		}
 		return true;
 	}
 
-	PeerConnection& Server::AddPeer(asio::ip::tcp::socket socket)
+	PeerConnection* Server::AddPeer(asio::ip::tcp::socket socket)
 	{
-		return _peers.emplace_back(_io_context, std::move(socket));
+		int index = _peers.size();
+		_peers.push_back(std::make_unique<PeerConnection>(_io_context, std::move(socket)));
+		return _peers[index].get();
 	}
 }

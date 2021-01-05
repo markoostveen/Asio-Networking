@@ -45,7 +45,12 @@ namespace Networking {
 		}
 
 		void Reset() {
-			delete[] Body;
+			Header.Size = 0;
+			Header.Category = 0;
+			Header.Type = 0;
+			if (Body != nullptr) {
+				delete[] Body;
+			}
 		}
 
 		/// <summary>

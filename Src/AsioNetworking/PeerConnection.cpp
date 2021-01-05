@@ -10,15 +10,9 @@ namespace Networking {
 		asio::post(_io_context,
 			[this, message]()
 			{
-				// If the queue has a message in it, then we must
-				// assume that it is in the process of asynchronously being written.
-				// Either way add the message to the queue to be output. If no messages
-				// were available to be written, then start the process of writing the
-				// message at the front of the queue.
 				bool bWritingMessage = !_outgoingMessages.empty();
 				_outgoingMessages.push(message);
-				if (!bWritingMessage)
-				{
+				if (!bWritingMessage) {
 					WriteHeader();
 				}
 			});
@@ -49,6 +43,7 @@ namespace Networking {
 					}
 					else
 					{
+						_readBuffer.Body = nullptr;
 						ProcessReceivedMessage(_readBuffer);
 					}
 				}
@@ -90,7 +85,6 @@ namespace Networking {
 					}
 					else
 					{
-						_outgoingMessages.front().Reset();
 						_outgoingMessages.pop();
 
 						if (!_outgoingMessages.empty())
@@ -114,7 +108,6 @@ namespace Networking {
 			{
 				if (!errorCode)
 				{
-					_outgoingMessages.front().Reset();
 					_outgoingMessages.pop();
 
 					if (!_outgoingMessages.empty())
@@ -134,7 +127,7 @@ namespace Networking {
 	{
 		auto it = _connectionTypeQueues.find(message.Header.Category);
 		if (it != _connectionTypeQueues.end()) {
-			it->second->ProcessMessage(*this, message); // process the message using the callback
+			it->second->ProcessMessage(this, message); // process the message using the callback
 		}
 
 		message.Reset();

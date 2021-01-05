@@ -20,20 +20,20 @@ namespace Networking {
 		ServerCategoryHandler(Server* parentServer)
 			: CategorizedConnectionHandler(ServerCategory, parentServer) {}
 
-		void ProcessMessage(PeerConnection& peer, Message& message) final;
+		void ProcessMessage(PeerConnection* peer, Message& message) final;
 
-		void ReceiveWelcomeMessage(PeerConnection& peer, Message& message);
+		void ReceiveWelcomeMessage(PeerConnection* peer, Message& message);
 
-		void SendWelcomeMessage(PeerConnection& peer);
+		void SendWelcomeMessage(PeerConnection* peer);
 
-		void ReceiveServerPort(PeerConnection& peer, Message& message);
-		void SendRequestServerPort(PeerConnection& peer);
+		void ReceiveServerPort(PeerConnection* peer, Message& message);
+		void SendRequestServerPort(PeerConnection* peer);
 
-		void SendServerPort(PeerConnection& peer);
+		void SendServerPort(PeerConnection* peer);
 
-		void SendRequestPeerList(PeerConnection& peer);
+		void SendRequestPeerList(PeerConnection* peer);
 
-		void ReceiveRequestPeerList(PeerConnection& peer, Message& message);
+		void SendPeerList(PeerConnection* peer);
 
 		void ReceivePeerList(Message& message);
 	};
