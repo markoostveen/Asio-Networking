@@ -54,7 +54,7 @@ namespace Networking {
 				}
 				else
 				{
-					std::cout << "[" << _socket.remote_endpoint() << "] " << errorCode.message() << "\n";
+					std::cout << errorCode.message() << "\n";
 					_socket.close();
 				}
 			});
@@ -71,7 +71,7 @@ namespace Networking {
 				}
 				else
 				{
-					std::cout << "[" << _socket.remote_endpoint() << "] " << errorCode.message() << "\n";
+					std::cout << errorCode.message() << "\n";
 					_socket.close();
 				}
 			});
@@ -101,7 +101,7 @@ namespace Networking {
 				}
 				else
 				{
-					std::cout << "[" << _socket.remote_endpoint() << "] " << errorCode.message() << "\n";
+					std::cout << errorCode.message() << "\n";
 					_socket.close();
 				}
 			});
@@ -124,7 +124,7 @@ namespace Networking {
 				}
 				else
 				{
-					std::cout << "[" << _socket.remote_endpoint() << "] " << errorCode.message() << "\n";
+					std::cout << errorCode.message() << "\n";
 					_socket.close();
 				}
 			});

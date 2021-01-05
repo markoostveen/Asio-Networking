@@ -3,6 +3,8 @@
 
 #include <string>
 #include <iostream>
+#include <vector>
+#include <unordered_set>
 
 struct WelcomeMessageData {
 	uint8_t WelcomeStringSize;
@@ -37,15 +39,13 @@ void Networking::ServerCategoryHandler::ReceiveWelcomeMessage(PeerConnection& pe
 	messageString.resize(messageData.WelcomeStringSize);
 	message.Pull(messageString.data(), messageData.WelcomeStringSize);
 
-	std::cout << messageString << std::endl;
+	std::cout << messageString << "[" << peer.Address() << "]" << std::endl;
 	SendRequestPeerList(peer);
 }
 
 void Networking::ServerCategoryHandler::SendWelcomeMessage(PeerConnection& peer)
 {
-	std::stringstream welcomeMessageStream;
-	welcomeMessageStream << "Welcome, you are now connected to " << server->LocalAddress();
-	std::string welcomeMessageString = welcomeMessageStream.str();
+	std::string welcomeMessageString = "Welcome hello from your new buddy";
 	WelcomeMessageData messageData;
 	messageData.WelcomeStringSize = welcomeMessageString.size();
 
@@ -99,14 +99,32 @@ void Networking::ServerCategoryHandler::ReceivePeerList(Message& message)
 	uint16_t peerAddressLengths[messageData.PeerCount];
 	message.Pull(peerAddressLengths, sizeof(uint16_t[messageData.PeerCount]));
 
+	std::vector<std::string> peerAddresses;
+	std::unordered_set<std::string> peerAddressesSet;
+
 	for (int i = messageData.PeerCount - 1; i >= 0; i--)
 	{
 		std::string address;
 		address.resize(peerAddressLengths[i]);
 		message.Pull(address.data(), peerAddressLengths[i]);
+		peerAddresses.emplace_back(address);
+		peerAddressesSet.emplace(address);
 
 		std::cout << "Received peer address: " << address << std::endl;
 	}
 
 	std::cout << "Received peer list with " << std::to_string(messageData.PeerCount) << " peers" << std::endl;
+
+	for (int i = 0; i < peerAddresses.size(); i++)
+	{
+		const PeerConnection& peer = server->GetPeer(i);
+		std::string address = peer.Address();
+		auto it = peerAddressesSet.find(address);
+		if (it == peerAddressesSet.end()) {
+			// Found a new peer that has not been identified before
+			// use address and our own configured port to try and connect
+			std::cout << "Connecting to peer at " << address << ":" << server->Port() << std::endl;
+			server->Connect(peerAddresses[i], server->Port());
+		}
+	}
 }

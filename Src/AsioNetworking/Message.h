@@ -48,13 +48,26 @@ namespace Networking {
 			delete[] Body;
 		}
 
+		/// <summary>
+		/// Pushing bytes copies given bytes into the message buffer, and increases the packetsize
+		/// </summary>
+		/// <param name="data"></param>
+		/// <param name="size"></param>
 		template<typename DataType>
 		void Push(DataType& data) {
 			Push(&data, sizeof(DataType));
 		}
 
-		void Push(const void* data, int size)
+		/// <summary>
+		/// Pushing bytes copies given bytes into the message buffer, and increases the packetsize
+		/// </summary>
+		/// <param name="data"></param>
+		/// <param name="size"></param>
+		template<typename PointerType>
+		void Push(const PointerType data, int size)
 		{
+			static_assert(std::is_pointer<PointerType>::value);
+
 			uint8_t* newBody = new uint8_t[Header.Size + size];
 			std::memcpy(newBody + Header.Size, data, size);
 			std::memcpy(newBody, Body, Header.Size);
@@ -63,8 +76,17 @@ namespace Networking {
 			Header.Size += size;
 		}
 
-		void Pull(void* data, int size)
+		/// <summary>
+		/// Pulling bytes from the buffer copies selected bytes into the given pointer and decreases packetsize.
+		/// Note bytes are left in the buffer to preven reallocation
+		/// </summary>
+		/// <param name="data"></param>
+		/// <param name="size"></param>
+		template<typename PointerType>
+		void Pull(PointerType data, int size)
 		{
+			static_assert(std::is_pointer<PointerType>::value);
+
 			Header.Size -= size;
 			std::memcpy(data, Body + Header.Size, size);
 		}

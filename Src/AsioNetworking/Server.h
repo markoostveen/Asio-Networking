@@ -26,12 +26,8 @@ namespace Networking {
 			return _peers[index];
 		}
 
-		std::string LocalAddress() {
-			std::stringstream ss;
-			ss << _acceptor.local_endpoint().address().to_string();
-			ss << ":";
-			ss << _acceptor.local_endpoint().port();
-			return ss.str();
+		short Port() {
+			return _acceptor.local_endpoint().port();
 		}
 
 	protected:

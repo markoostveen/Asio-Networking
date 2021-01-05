@@ -1,4 +1,4 @@
-#include "AsioNetworking/server.h"
+#include "AsioNetworking/Server.h"
 
 #include <memory>
 #include <iostream>
@@ -12,23 +12,23 @@ public:
 protected:
 	bool OnPeerConnected(PeerConnection& newPeer) final {
 		// User should add their own handlers
+		//newPeer.AddCategoryCallback(Id, handlerptr);
 
 		return true;
 	}
 };
 
-asio::io_service io_service;
 int main(int argc, char** argv) {
-	asio::io_service io_service;
-	std::shared_ptr<TestServer> server = std::make_shared<TestServer>(io_service, 22);
+	asio::io_context io_context;
+	std::shared_ptr<TestServer> server = std::make_shared<TestServer>(io_context, 4999);
 
 	if (argc == 1)
-		server->Connect("127.0.0.1", 5000);
+		server->Connect("PiServer2", 5000);
 
 	server->WaitForIncomingConnection();
 
 	while (true) {
-		io_service.poll(); // execute stuff for the server
+		io_context.poll(); // execute stuff for the server
 	}
 
 	return 0;
