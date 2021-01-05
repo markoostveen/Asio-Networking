@@ -37,7 +37,7 @@ namespace Networking {
 	void PeerConnection::ReadHeader()
 	{
 		asio::async_read(_socket, asio::buffer(&_readBuffer.Header, sizeof(MessageHeader)),
-			[&](std::error_code errorCode, std::size_t length)
+			[this](std::error_code errorCode, std::size_t length)
 			{
 				if (!errorCode)
 				{
@@ -54,7 +54,7 @@ namespace Networking {
 				}
 				else
 				{
-					std::cout << errorCode.message() << "\n";
+					std::cout << errorCode.message() << std::endl;
 					_socket.close();
 				}
 			});

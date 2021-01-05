@@ -26,7 +26,15 @@ namespace Networking {
 
 		std::string Address() const {
 			auto endpoint = _socket.remote_endpoint();
-			return endpoint.address().to_string();
+			std::stringstream ss;
+			ss << endpoint.address().to_string();
+			ss << ":";
+			ss << _originalPort;
+			return ss.str();
+		}
+
+		void SetOriginalPort(short port) {
+			_originalPort = port;
 		}
 
 	private:
@@ -39,6 +47,7 @@ namespace Networking {
 
 		asio::io_context& _io_context;
 		asio::ip::tcp::socket _socket;
+		short _originalPort;
 
 		std::unordered_map<uint8_t, std::shared_ptr<CategorizedConnectionHandler>> _connectionTypeQueues;
 		std::queue<Message> _outgoingMessages;

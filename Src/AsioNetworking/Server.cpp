@@ -20,6 +20,7 @@ namespace Networking {
 					std::shared_ptr<ServerCategoryHandler> serverHandler = std::make_shared<ServerCategoryHandler>(this);
 					peer.AddCategoryCallback(ServerCategory, serverHandler);
 					serverHandler->SendWelcomeMessage(peer);
+					serverHandler->SendRequestServerPort(peer);
 				}
 			}
 			else
@@ -41,11 +42,12 @@ namespace Networking {
 			auto socket = std::make_shared< asio::ip::tcp::socket>(_io_context);
 
 			asio::async_connect(*socket, endpoints,
-				[this, socket](std::error_code ec, asio::ip::tcp::endpoint endpoint)
+				[this, port, socket](std::error_code ec, asio::ip::tcp::endpoint endpoint)
 				{
 					if (!ec)
 					{
 						PeerConnection& peer = AddPeer(std::move(*socket));
+						peer.SetOriginalPort(port);
 						if (OnPeerConnected(peer)) {
 							std::shared_ptr<ServerCategoryHandler> serverHandler = std::make_shared<ServerCategoryHandler>(this);
 							peer.AddCategoryCallback(ServerCategory, serverHandler);

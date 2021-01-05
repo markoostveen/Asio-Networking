@@ -20,6 +20,11 @@ void Networking::ServerCategoryHandler::ProcessMessage(PeerConnection& peer, Mes
 	case Messages::WelcomeMessage:
 		ReceiveWelcomeMessage(peer, message);
 		break;
+	case Messages::RequestServerPort:
+		SendServerPort(peer);
+		break;
+	case Messages::ServerPort:
+		ReceiveServerPort(peer, message);
 	case Messages::RequestPeerList:
 		ReceiveRequestPeerList(peer, message);
 		break;
@@ -54,6 +59,28 @@ void Networking::ServerCategoryHandler::SendWelcomeMessage(PeerConnection& peer)
 	message.Push(welcomeMessageString.data(), messageData.WelcomeStringSize);
 
 	SendMessageToPeer(peer, message);
+}
+
+void Networking::ServerCategoryHandler::SendRequestServerPort(PeerConnection& peer)
+{
+	Message message = Message::CreateMessage(Messages::RequestServerPort);
+	SendMessageToPeer(peer, message);
+}
+
+void Networking::ServerCategoryHandler::SendServerPort(PeerConnection& peer)
+{
+	Message message = Message::CreateMessage(Messages::ServerPort);
+	short port = server->Port();
+	message.Push(port);
+
+	SendMessageToPeer(peer, message);
+}
+
+void Networking::ServerCategoryHandler::ReceiveServerPort(PeerConnection& peer, Message& message)
+{
+	short port;
+	message.Pull(port);
+	peer.SetOriginalPort(port);
 }
 
 void Networking::ServerCategoryHandler::SendRequestPeerList(PeerConnection& peer)
@@ -124,7 +151,11 @@ void Networking::ServerCategoryHandler::ReceivePeerList(Message& message)
 			// Found a new peer that has not been identified before
 			// use address and our own configured port to try and connect
 			std::cout << "Connecting to peer at " << address << ":" << server->Port() << std::endl;
-			server->Connect(peerAddresses[i], server->Port());
+
+			address = peerAddresses[i];
+			std::string ipAddress = address.substr(0, address.find_first_of(':'));
+			std::string port = address.substr(address.find_first_of(':') + 1, address.size());
+			server->Connect(address, std::stoi(port));
 		}
 	}
 }

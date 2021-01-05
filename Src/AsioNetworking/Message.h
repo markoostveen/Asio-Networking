@@ -82,6 +82,17 @@ namespace Networking {
 		/// </summary>
 		/// <param name="data"></param>
 		/// <param name="size"></param>
+		template<typename DataType>
+		void Pull(DataType& data) {
+			Pull(&data, sizeof(DataType));
+		}
+
+		/// <summary>
+		/// Pulling bytes from the buffer copies selected bytes into the given pointer and decreases packetsize.
+		/// Note bytes are left in the buffer to preven reallocation
+		/// </summary>
+		/// <param name="data"></param>
+		/// <param name="size"></param>
 		template<typename PointerType>
 		void Pull(PointerType data, int size)
 		{

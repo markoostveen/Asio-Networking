@@ -10,6 +10,8 @@ namespace Networking {
 	private:
 		enum Messages {
 			WelcomeMessage = 0,
+			RequestServerPort,
+			ServerPort,
 			RequestPeerList,
 			PeerList
 		};
@@ -23,6 +25,11 @@ namespace Networking {
 		void ReceiveWelcomeMessage(PeerConnection& peer, Message& message);
 
 		void SendWelcomeMessage(PeerConnection& peer);
+
+		void ReceiveServerPort(PeerConnection& peer, Message& message);
+		void SendRequestServerPort(PeerConnection& peer);
+
+		void SendServerPort(PeerConnection& peer);
 
 		void SendRequestPeerList(PeerConnection& peer);
 
