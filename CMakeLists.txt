@@ -2,6 +2,7 @@ cmake_minimum_required (VERSION 3.8)
 
 project("AsioNetworking")
 
+option(Networking_DebugMessages "Display extra information for received messages." OFF)
 
 file(GLOB_RECURSE  Sources
   "${CMAKE_CURRENT_SOURCE_DIR}/Src/*.cpp"
@@ -12,6 +13,8 @@ find_package(Threads REQUIRED)
 add_library(AsioNetworking STATIC ${Sources})
 target_include_directories(AsioNetworking PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Src")
 set_property(TARGET AsioNetworking PROPERTY CXX_STANDARD 17)
+target_compile_definitions(AsioNetworking PUBLIC NetworkingDebug)
+
 target_link_libraries(AsioNetworking PUBLIC Threads::Threads)
 
 target_include_directories(AsioNetworking PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Vendor/asio-1.18.1/include")

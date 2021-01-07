@@ -35,16 +35,20 @@ int main(int argc, char* argv[]) {
 	if (argc == 3) {
 		server->Connect("127.0.0.1", std::stoi(argv[2]));
 	}
-	else {
-		//server->Connect("PiServer2", 5000);
+	else if (argc == 4) {
+		server->Connect("PiServer2", 5000);
 	}
 
 	server->WaitForIncomingConnection();
 
 	//std::thread worker([&]() {io_context.run(); }); // execute stuff for the server
 
+	unsigned long long id = 0;
 	while (true) {
-		io_context.run();
+		io_context.poll_one();
+
+		std::cout << "poll complete: " << id << "\r";
+		id++;
 	}
 
 	return 0;

@@ -1,10 +1,20 @@
 #include "PeerConnection.h"
 #include "CategorizedConnectionHandler.h"
+#include "Server.h"
 
 #include <memory>
 #include <iostream>
+#include <atomic>
 
 namespace Networking {
+
+	std::atomic<uint32_t> PeerId;
+
+	PeerConnection::PeerConnection(Server* server, asio::io_context& context, asio::ip::tcp::socket socket)
+		: _server(server), _io_context(context), _socket(std::move(socket)), _id(PeerId++) { // initialize id with increment of atomic value to ensure it's unique
+		ReadHeader(); // start polling for new messages
+	}
+
 	void PeerConnection::SendMessageToPeer(Message message)
 	{
 		asio::post(_io_context,
@@ -16,16 +26,6 @@ namespace Networking {
 					WriteHeader();
 				}
 			});
-	}
-
-	void PeerConnection::AddCategoryCallback(uint8_t categoryId, std::shared_ptr<CategorizedConnectionHandler> categoryHandler)
-	{
-		_connectionTypeQueues.emplace(categoryId, categoryHandler);
-	}
-
-	void PeerConnection::RemoveCategoryCallback(uint8_t categoryId)
-	{
-		_connectionTypeQueues.erase(categoryId);
 	}
 
 	void PeerConnection::ReadHeader()
@@ -66,7 +66,7 @@ namespace Networking {
 				}
 				else
 				{
-					std::cout << errorCode.message() << "\n";
+					std::cout << errorCode.message() << std::endl;
 					_socket.close();
 				}
 			});
@@ -95,7 +95,7 @@ namespace Networking {
 				}
 				else
 				{
-					std::cout << errorCode.message() << "\n";
+					std::cout << errorCode.message() << std::endl;
 					_socket.close();
 				}
 			});
@@ -117,7 +117,7 @@ namespace Networking {
 				}
 				else
 				{
-					std::cout << errorCode.message() << "\n";
+					std::cout << errorCode.message() << std::endl;
 					_socket.close();
 				}
 			});
@@ -125,10 +125,9 @@ namespace Networking {
 
 	void PeerConnection::ProcessReceivedMessage(Message& message)
 	{
-		auto it = _connectionTypeQueues.find(message.Header.Category);
-		if (it != _connectionTypeQueues.end()) {
-			it->second->ProcessMessage(this, message); // process the message using the callback
-		}
+		auto handler = _server->GetCategoryHandler(message.Header.Category);
+		if (handler)
+			handler->ProcessMessage(this, message);
 
 		message.Reset();
 		ReadHeader();

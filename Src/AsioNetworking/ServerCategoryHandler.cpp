@@ -91,8 +91,16 @@ void Networking::ServerCategoryHandler::SendRequestPeerList(PeerConnection* peer
 
 void Networking::ServerCategoryHandler::SendPeerList(PeerConnection* peer)
 {
+#ifdef NetworkingDebug
 	std::cout << "Sending peer list to " << peer->Address() << ":" << std::endl;
+#endif
+
 	Message returnMessage = Message::CreateMessage(Messages::PeerList);
+
+	if (!peer->IsConnected())
+		return;
+
+	server->RefreshConnectedPeers(); // make sure peer list is accurate
 
 	PeerListData peerListData;
 	peerListData.PeerCount = server->ConnectedPeerCount() - 1; // minus to exclude calling peer
@@ -107,11 +115,12 @@ void Networking::ServerCategoryHandler::SendPeerList(PeerConnection* peer)
 	int bufferIndex = 0;
 	for (uint16_t i = 0; i < server->ConnectedPeerCount(); i++)
 	{
-		const PeerConnection* serverPeer = server->GetPeer(i);
+		uint32_t serverPeerID = server->GetPeerId(i);
+		PeerConnection* serverPeer = server->GetPeer(serverPeerID);
 		if (peer == serverPeer)
 			continue; // excluding calling peer
 
-		std::string address = serverPeer->Address();
+		std::string address = server->GetPeer(serverPeerID)->Address();
 		peerAddressCharCount[bufferIndex] = address.size();
 		// push actual address
 		returnMessage.Push(address.data(), peerAddressCharCount.get()[bufferIndex]);
@@ -144,27 +153,24 @@ void Networking::ServerCategoryHandler::ReceivePeerList(Message& message)
 		//std::cout << "Received peer address(" << stringSize << "): " << address << std::endl;
 	}
 
+	server->RefreshConnectedPeers(); // make sure connected peer list is accurate
+
 	// remove all addresses we can't connect to because of duplicate
 	for (int i = 0; i < server->ConnectedPeerCount(); i++)
 	{
-		const PeerConnection* peer = server->GetPeer(i);
+		PeerConnection* peer = server->GetPeer(server->GetPeerId(i));
 		std::string address = peer->Address();
 
-		// check if it's still connected
-		bool disconnected = !peer->IsConnected();
-		if (disconnected) {
-			disconnected = true;
-			server->Disconnect(peer); // remove peers that are disconnected
-		}
-
-		auto it = peerAddressesSet.find(address);
+		auto it = peerAddressesSet.find(peer->Address());
 		if (it != peerAddressesSet.end()) {
 			peerAddressesSet.erase(*it);
 		}
 	}
 
+#ifdef NetworkingDebug
 	if (peerAddressesSet.size() > 0)
 		std::cout << "Received peer list with " << std::to_string(messageData.PeerCount) << " peers" << std::endl;
+#endif
 
 	for (auto& address : peerAddressesSet)
 	{

@@ -9,20 +9,13 @@
 #include <queue>
 
 namespace Networking {
-	class CategorizedConnectionHandler;
+	class Server;
 
 	class PeerConnection {
 	public:
-		typedef void (*CategoryCallback)(Message& message);
-
-		PeerConnection(asio::io_context& context, asio::ip::tcp::socket socket) : _io_context(context), _socket(std::move(socket)) {
-			ReadHeader(); // start polling for new messages
-		}
+		PeerConnection(Server* server, asio::io_context& context, asio::ip::tcp::socket socket);
 
 		void SendMessageToPeer(Message message);
-
-		void AddCategoryCallback(uint8_t categoryId, std::shared_ptr<CategorizedConnectionHandler> categoryHandler);
-		void RemoveCategoryCallback(uint8_t categoryId);
 
 		std::string Address() const {
 			auto endpoint = _socket.remote_endpoint();
@@ -41,6 +34,10 @@ namespace Networking {
 			return _socket.is_open();
 		}
 
+		uint32_t Id() {
+			return _id;
+		}
+
 	private:
 		void ReadHeader();
 		void ReadBody();
@@ -51,9 +48,12 @@ namespace Networking {
 
 		asio::io_context& _io_context;
 		asio::ip::tcp::socket _socket;
-		short _originalPort;
+		short _originalPort; // remote server port of peer
+		const uint32_t _id; // local identifier
+		
+		Server* _server;
 
-		std::unordered_map<uint8_t, std::shared_ptr<CategorizedConnectionHandler>> _connectionTypeQueues;
+		// messages
 		std::queue<Message> _outgoingMessages{};
 
 		//buffers

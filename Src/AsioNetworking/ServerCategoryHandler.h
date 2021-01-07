@@ -4,9 +4,7 @@
 #include "PeerConnection.h"
 
 namespace Networking {
-	constexpr uint8_t ServerCategory = 0;
-
-	class ServerCategoryHandler : public CategorizedConnectionHandler {
+	class ServerCategoryHandler : public CategorizedConnectionHandler<0> {
 	private:
 		enum Messages {
 			WelcomeMessage = 0,
@@ -18,7 +16,7 @@ namespace Networking {
 
 	public:
 		ServerCategoryHandler(Server* parentServer)
-			: CategorizedConnectionHandler(ServerCategory, parentServer) {}
+			: CategorizedConnectionHandler(parentServer) {}
 
 		void ProcessMessage(PeerConnection* peer, Message& message) final;
 
@@ -36,5 +34,13 @@ namespace Networking {
 		void SendPeerList(PeerConnection* peer);
 
 		void ReceivePeerList(Message& message);
+	};
+
+	class ServerTestHandler : public CategorizedConnectionHandler<0> {
+	public:
+		ServerTestHandler(Server* parentServer) : CategorizedConnectionHandler(parentServer){}
+	
+	protected:
+		void ProcessMessage(PeerConnection* peer, Message& message)final{}
 	};
 }

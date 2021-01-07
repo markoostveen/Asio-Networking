@@ -3,6 +3,7 @@
 #include "config.h"
 
 #include "PeerConnection.h"
+#include "CategorizedConnectionHandler.h"
 
 #include "asio.hpp"
 
@@ -16,37 +17,36 @@ namespace Networking {
 		Server(const Server&) = delete;
 		Server() = delete;
 
+		template<class T>
+		void AddCategoryHandler(std::shared_ptr<T> categoryHandler) {
+			_categoryHandlers.emplace(T::ID(), categoryHandler);
+		}
+
+		void RemoveCategoryHandler(uint8_t categoryId);
+
+		template<class T>
+		T* GetCategoryHandler() {
+			return static_cast<T*>(GetCategoryHandler(T::ID()));
+		}
+
+		CategorizedConnectionHandlerBase* GetCategoryHandler(uint8_t categoryId);
+
 		void WaitForIncomingConnection();
 		bool Connect(const std::string& host, const int port);
 
-		uint32_t ConnectedPeerCount() {
-			return _peers.size();
-		}
+		uint32_t ConnectedPeerCount();
 
-		const PeerConnection* GetPeer(uint32_t index) {
-			return _peers[index].get();
-		}
+		PeerConnection* GetPeer(uint32_t id);
+		uint32_t GetPeerId(uint32_t index);
 
-		short Port() {
-			return _acceptor.local_endpoint().port();
-		}
+		short Port();
 
-		void Disconnect(const PeerConnection* peer) {
-			for (int i = 0; i < _peers.size(); i++)
-			{
-				if (_peers[i].get() == peer) {
-					_peers.erase(_peers.begin() + i);
-					break;
-				}
-			}
-		}
+		void RefreshConnectedPeers();
+
+		void Disconnect(const PeerConnection* peer);
 
 	protected:
-		Server(asio::io_context& io_context, short port)
-			: _io_context(io_context), _acceptor(_io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port), port)
-		{
-			std::cout << "Server running on " << _acceptor.local_endpoint().address() << ":" << port << std::endl;
-		}
+		Server(asio::io_context& io_context, short port);
 
 		virtual bool OnPeerConnected(PeerConnection* newPeer) = 0;
 
@@ -56,5 +56,6 @@ namespace Networking {
 		asio::io_context& _io_context;
 		asio::ip::tcp::acceptor _acceptor;
 		std::vector<std::unique_ptr<PeerConnection>> _peers;
+		std::unordered_map<uint8_t, std::shared_ptr<CategorizedConnectionHandlerBase>> _categoryHandlers;
 	};
 }
