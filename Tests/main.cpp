@@ -1,5 +1,7 @@
 #include "AsioNetworking/Server.h"
 
+#include "AsioNetworking/ServerCategoryHandler.h"
+
 #include <memory>
 #include <iostream>
 #include <thread>
@@ -8,12 +10,11 @@ using namespace Networking;
 
 class TestServer : public Server {
 public:
-	TestServer(asio::io_context& io_context, short port) : Server(io_context, port) {}
+	TestServer(asio::io_context& io_context, short port) : Server(io_context, port) {
+	}
 
 protected:
 	bool OnPeerConnected(PeerConnection* newPeer) final {
-		// User should add their own handlers
-		//newPeer.AddCategoryCallback(Id, handlerptr);
 
 		return true;
 	}

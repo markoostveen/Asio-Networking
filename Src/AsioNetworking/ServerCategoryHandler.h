@@ -35,12 +35,4 @@ namespace Networking {
 
 		void ReceivePeerList(Message& message);
 	};
-
-	class ServerTestHandler : public CategorizedConnectionHandler<0> {
-	public:
-		ServerTestHandler(Server* parentServer) : CategorizedConnectionHandler(parentServer){}
-	
-	protected:
-		void ProcessMessage(PeerConnection* peer, Message& message)final{}
-	};
 }
